@@ -1,13 +1,12 @@
-package ru.nsu.ccfit.kokunina.dto.client.requests;
+package ru.nsu.ccfit.kokunina.dto;
 
-public class Login {
+public class User {
     private String name;
 
-    public Login() {
-
+    public User() {
     }
 
-    public Login(String name) {
+    public User(String name) {
         this.name = name;
     }
 

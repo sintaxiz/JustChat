@@ -1,11 +1,13 @@
 package ru.nsu.ccfit.kokunina;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.nsu.ccfit.kokunina.dto.Message;
 import ru.nsu.ccfit.kokunina.dto.MessageType;
-import ru.nsu.ccfit.kokunina.dto.client.requests.Login;
+import ru.nsu.ccfit.kokunina.dto.client.requests.LoginRequest;
+import ru.nsu.ccfit.kokunina.dto.exceptions.NameAlreadyTakenException;
+import ru.nsu.ccfit.kokunina.dto.exceptions.ReceiveErrorException;
+import ru.nsu.ccfit.kokunina.dto.exceptions.SendErrorException;
 
 import java.io.*;
 import java.net.Socket;
@@ -18,77 +20,71 @@ public class ChatServerClient extends Thread {
     private final ChatServer server;
     private String userName;
 
-    public ChatServerClient(Socket socket, ChatServer server) {
+    private final ServerMessagesController messagesController;
+
+    public ChatServerClient(Socket socket, ChatServer server) throws IOException {
         this.socket = socket;
         this.server = server;
+
+        InputStream inputStream = socket.getInputStream();
+        DataInputStream socketInput = new DataInputStream(inputStream);
+
+        OutputStream outputStream = socket.getOutputStream();
+        DataOutputStream socketOutput = new DataOutputStream(outputStream);
+
+        messagesController = new JsonServerMessagesController(socketInput, socketOutput);
+
     }
 
     @Override
     public void run() {
-        // 1. Authentication with client to create login and session ID
-        try {
-            auth();
-            log.info("Successful authentication: {}", this);
-        } catch (IOException e) {
-            log.error("Unsuccessful authentication: {}. Thread will be stopped.", this);
-            return;
-        }
-        /*while (!isInterrupted()) {
-            try () {
-                String msg = objectInputStream.readUTF();
-                while (!msg.equals("bye")) {
-                    log.info("{} receive message: {}", this, msg);
-                    msg = objectInputStream.readUTF();
+        while (!isInterrupted()) {
+            Message newMessage = null;
+            if (socket.isClosed()) {
+                log.info("Connection was closed.");
+                try {
+                    sleep(100000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
                 }
-            } catch (IOException e) {
-                log.error("Can not receive message (maybe connection is closed?):", e);
             }
-        }*/
-        try {
-            sleep(1000000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+            try {
+                newMessage = messagesController.readMessage();
+                if (newMessage.getType() == MessageType.USER_LIST) {
+                    log.info("Received user list request from {}", this);
+                    messagesController.sendUserList(server.getUserList());
+                    log.info("Send user list request to {}", this);
+                } else {
+                    log.warn("ChatServerClient don't have handler for message type {}", newMessage.getType());
+                }
+            } catch (SendErrorException e) {
+                log.error("Can not send message {} to client", newMessage, e);
+                interrupt();
+            } catch (IOException e) {
+                log.error("Can not receive message from client", e);
+                interrupt();
+            }
         }
+        disconnect();
+    }
 
+    private void disconnect() {
         try {
             socket.close();
         } catch (IOException e) {
-            log.info("Can not close socket {}", this, e);
+            log.error("Can not close socket {}", this, e);
         } finally {
             server.removeClient(this);
         }
     }
 
-    private void auth() throws IOException {
-        InputStream inputStream = socket.getInputStream();
-        DataInputStream dataInputStream = new DataInputStream(inputStream);
-
-        // 1) Get login message as json
-        String loginMessageJson = dataInputStream.readUTF();
-        log.info("login msg = {}", loginMessageJson);
-
-        // 2) Map json message to message object
-        ObjectMapper objectMapper = new ObjectMapper();
-        Message loginMessage = objectMapper.readValue(loginMessageJson, Message.class);
-
-        // 2.1) Check is it correct message type
-        if (loginMessage.getType() != MessageType.LOGIN) {
-            log.error("Wrong message type from client {}. Requested LOGIN but received {} ",
-                                                    this, loginMessage.getType());
-            // todo: exception
-            return;
-        }
-
-        // 3) Get login as json and map it
-        String loginJson = loginMessage.getMessageBody();
-        Login login = objectMapper.readValue(loginJson, Login.class);
-
-        String loginName = login.getName();
-
+    public void auth() throws IOException, NameAlreadyTakenException, ReceiveErrorException {
+        LoginRequest loginRequest;
+        loginRequest = messagesController.receiveLogin();
+        String loginName = loginRequest.getName();
         if (server.hasUser(loginName)) {
             log.info("Server already has user with name {}. Error message will be send.", loginName);
-            return;
-            // TODO: send error to client
+            throw new NameAlreadyTakenException();
         }
         userName = loginName;
         log.info("user name = {}", userName);
@@ -97,10 +93,6 @@ public class ChatServerClient extends Thread {
     @Override
     public String toString() {
         return socket.toString();
-    }
-
-    public OutputStream getOutputStream() throws IOException {
-        return socket.getOutputStream();
     }
 
     public String getUserName() {

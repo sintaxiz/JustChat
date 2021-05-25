@@ -25,7 +25,9 @@ public class ChatClientApplication {
             chatClient.logIn();
         } catch (IOException e) {
             log.error("Can not log in", e);
+            return;
         }
+
         chatClient.start();
         chatClient.join();
     }

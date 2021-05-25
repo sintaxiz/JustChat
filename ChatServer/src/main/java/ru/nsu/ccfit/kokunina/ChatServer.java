@@ -2,11 +2,16 @@ package ru.nsu.ccfit.kokunina;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ru.nsu.ccfit.kokunina.dto.User;
+import ru.nsu.ccfit.kokunina.dto.exceptions.NameAlreadyTakenException;
+import ru.nsu.ccfit.kokunina.dto.exceptions.ReceiveErrorException;
+import ru.nsu.ccfit.kokunina.dto.server.responses.UserList;
 
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -30,30 +35,19 @@ public class ChatServer extends Thread {
                 log.info("New connection {} established", newConnection.getRemoteSocketAddress());
 
                 ChatServerClient newClient = new ChatServerClient(newConnection, this);
-                addClient(newClient);
-                //notifyClients();
-                newClient.start();
+                try {
+                    newClient.auth();
+                    log.info("Successful authentication: {}", newClient);
+                } catch (IOException | NameAlreadyTakenException | ReceiveErrorException e) {
+                    log.error("Unsuccessful authentication: {}.",this, e);
+                    return;
+                }
 
+                addClient(newClient);
+                newClient.start();
+                //notifyClients();
             } catch (IOException e) {
                 log.error("Exception caught while accepting socket", e);
-            }
-        }
-    }
-
-    public synchronized void notifyClients() {
-        for (ChatServerClient client : clients) {
-            OutputStreamWriter outputStreamWriter;
-            try {
-                outputStreamWriter = new OutputStreamWriter(client.getOutputStream());
-            } catch (IOException e) {
-                log.error("can not get output stream from client {}", client, e);
-                return;
-            }
-            try {
-                outputStreamWriter.write("hello!");
-                log.info("Send hello to {}", client);
-            } catch (IOException e) {
-                log.error("can not send hello to client {}", client, e);
             }
         }
     }
@@ -68,7 +62,6 @@ public class ChatServer extends Thread {
 
     public synchronized boolean hasUser(String userName) {
         for (ChatServerClient client : clients) {
-            log.info("CLIENT name = {}, cLIENTSize= {}", client.getUserName(), clients.size());
             if (userName.equals(client.getUserName())) {
                 return true;
             }
@@ -76,4 +69,14 @@ public class ChatServer extends Thread {
         return false;
     }
 
+    public ArrayList<User> getUserList() {
+        if (clients.size() <= 0) {
+            return null;
+        }
+        ArrayList<User> users = new ArrayList<>();
+        for (ChatServerClient client : clients) {
+            users.add(new User(client.getUserName()));
+        }
+        return users;
+    }
 }
