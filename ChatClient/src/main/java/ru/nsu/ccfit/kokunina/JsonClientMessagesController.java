@@ -5,9 +5,11 @@ import ru.nsu.ccfit.kokunina.dto.Message;
 import ru.nsu.ccfit.kokunina.dto.MessageType;
 import ru.nsu.ccfit.kokunina.dto.client.requests.LoginRequest;
 import ru.nsu.ccfit.kokunina.dto.client.requests.UserListRequest;
+import ru.nsu.ccfit.kokunina.dto.client.requests.NewMessage;
 import ru.nsu.ccfit.kokunina.dto.exceptions.ReceiveErrorException;
 import ru.nsu.ccfit.kokunina.dto.exceptions.SendErrorException;
 import ru.nsu.ccfit.kokunina.dto.server.responses.UserList;
+import ru.nsu.ccfit.kokunina.dto.server.responses.UserMessage;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -27,7 +29,7 @@ public class JsonClientMessagesController implements ClientMessagesController {
     @Override
     public void sendUserListRequest(UserListRequest userListRequest) throws SendErrorException {
         try {
-            Message message = new Message(MessageType.USER_LIST,  objectMapper.writeValueAsString(userListRequest));
+            Message message = new Message(MessageType.USER_LIST, objectMapper.writeValueAsString(userListRequest));
             String messageString = objectMapper.writeValueAsString(message);
             output.writeUTF(messageString);
             output.flush();
@@ -53,13 +55,11 @@ public class JsonClientMessagesController implements ClientMessagesController {
             throw new ReceiveErrorException("Can not convert string message to message object", e);
         }
 
-        // 2.1) Check is it correct message type
         if (userMessage.getType() != MessageType.USER_LIST) {
             throw new ReceiveErrorException("Wrong message type from client. Requested LOGIN but received " +
                     userMessage.getType());
         }
 
-        // 3) Get login as json and map it
         String userJson = userMessage.getMessageBody();
         UserList userList;
         try {
@@ -79,21 +79,47 @@ public class JsonClientMessagesController implements ClientMessagesController {
             throw new SendErrorException("Can not parse login to json string", e);
         }
 
-        // 2) Wrap login to message
         Message message = new Message(MessageType.LOGIN, loginMessageBody);
+        sendMessage(message);
+    }
 
-        // 3) Message to json
-        String loginMessage;
+    @Override
+    public void sendUserMessage(NewMessage newMessage) throws SendErrorException {
+        String userMessageBody;
         try {
-            loginMessage = objectMapper.writeValueAsString(message);
+            userMessageBody = objectMapper.writeValueAsString(newMessage);
+        } catch (IOException e) {
+            throw new SendErrorException("Can not parse user message to json string", e);
+        }
+
+        Message message = new Message(MessageType.NEW_MESSAGE, userMessageBody);
+        sendMessage(message);
+    }
+
+    @Override
+    public UserMessage readUserMessage(Message serverMessage) throws IOException {
+        return objectMapper.readValue(serverMessage.getMessageBody(), UserMessage.class);
+    }
+
+    private void sendMessage(Message message) throws SendErrorException {
+        String messageString;
+        try {
+            messageString = objectMapper.writeValueAsString(message);
         } catch (IOException e) {
             throw new SendErrorException("Can not parse loginMessage to json string", e);
         }
         try {
-            output.writeUTF(loginMessage);
+            output.writeUTF(messageString);
             output.flush();
         } catch (IOException e) {
             throw new SendErrorException("Can not write login message to output.");
         }
+    }
+
+    @Override
+    public Message readMessage() throws IOException {
+        String messageString = input.readUTF();
+        ObjectMapper objectMapper = new ObjectMapper();
+        return objectMapper.readValue(messageString, Message.class);
     }
 }

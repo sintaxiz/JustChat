@@ -1,16 +1,15 @@
 package ru.nsu.ccfit.kokunina;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.nsu.ccfit.kokunina.dto.Message;
 import ru.nsu.ccfit.kokunina.dto.MessageType;
 import ru.nsu.ccfit.kokunina.dto.User;
 import ru.nsu.ccfit.kokunina.dto.client.requests.LoginRequest;
+import ru.nsu.ccfit.kokunina.dto.client.requests.NewMessage;
 import ru.nsu.ccfit.kokunina.dto.client.requests.UserListRequest;
 import ru.nsu.ccfit.kokunina.dto.exceptions.ReceiveErrorException;
 import ru.nsu.ccfit.kokunina.dto.exceptions.SendErrorException;
-import ru.nsu.ccfit.kokunina.dto.server.responses.Success;
 import ru.nsu.ccfit.kokunina.dto.server.responses.UserList;
 
 import java.io.*;
@@ -30,6 +29,28 @@ public class ChatClient extends Thread {
 
     @Override
     public void run() {
+
+        BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(System.in));
+
+        MessageReceiver messageReceiver = new MessageReceiver(socket, messagesController, new ConsoleClientView());
+        messageReceiver.start();
+
+        while (!isInterrupted()) {
+            String userMessage;
+            try {
+                userMessage = bufferedReader.readLine();
+            } catch (IOException e) {
+                log.error("Can not read message from console");
+                break;
+            }
+            try {
+                messagesController.sendUserMessage(new NewMessage(userMessage));
+                log.info("User message successfully sent");
+            } catch (SendErrorException e) {
+                log.error("Can not send user message", e);
+                break;
+            }
+        }
 
         try {
             messagesController.sendUserListRequest(new UserListRequest(1));
@@ -85,36 +106,31 @@ public class ChatClient extends Thread {
         }
     }*/
 
-    public void logIn() throws IOException {
+    public void logIn(String loginName) throws IOException {
+        log.info("Trying log in with name {}...", loginName);
         if (socket == null) {
             log.error("Can not log in because socket is null. Use connect() to create socket.");
             return;
         }
-        // 4) Send message to server
         try {
-            messagesController.sendLoginRequest(new LoginRequest("test"));
+            messagesController.sendLoginRequest(new LoginRequest(loginName));
+            log.info("Authentication message successfully send to server");
         } catch (SendErrorException e) {
-            throw new IOException("Can not send login request.");
+            throw new IOException("Can not send login request.", e);
         }
-        //socketOutput.flush();
-        log.info("Authentication message successfully write to server");
-
-
-        /*String serverAnswerString = socketInput.readUTF();
-        Message serverAnswerMessage = objectMapper.readValue(serverAnswerString, Message.class);
-        switch (serverAnswerMessage.getType()) {
-            case SUCCESS -> {
-                String successString = serverAnswerMessage.getMessageBody();
-                Success success = objectMapper.readValue(successString, Success.class);
-
-            }
+        Message serverAnswer = messagesController.readMessage();
+        MessageType answerType = serverAnswer.getType();
+        switch (answerType) {
+            case SUCCESS -> log.info("Successfully login");
             case ERROR -> {
-                String errorString = serverAnswerMessage.getMessageBody();
-                Error error = objectMapper.readValue(errorString, Error.class);
+                log.error("Can not login. Error answer from server: {}", serverAnswer.getMessageBody());
+                throw new IOException();
             }
-            default -> log.error("Wrong answer type from server. Expecting success or error but get {}",
-                    serverAnswerMessage.getType());
-        }*/
+            default -> {
+                log.error("Wrong answer type. Expected ERROR or SUCCESS, but received: {}", answerType);
+                throw new IOException("can not log in");
+            }
+        }
     }
 
 }

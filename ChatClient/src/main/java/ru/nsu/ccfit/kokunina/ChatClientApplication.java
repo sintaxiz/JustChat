@@ -22,7 +22,7 @@ public class ChatClientApplication {
             return;
         }
         try {
-            chatClient.logIn();
+            chatClient.logIn("Rita");
         } catch (IOException e) {
             log.error("Can not log in", e);
             return;

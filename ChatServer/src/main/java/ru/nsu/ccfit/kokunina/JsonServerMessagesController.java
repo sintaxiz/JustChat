@@ -5,9 +5,11 @@ import ru.nsu.ccfit.kokunina.dto.Message;
 import ru.nsu.ccfit.kokunina.dto.MessageType;
 import ru.nsu.ccfit.kokunina.dto.User;
 import ru.nsu.ccfit.kokunina.dto.client.requests.LoginRequest;
+import ru.nsu.ccfit.kokunina.dto.client.requests.NewMessage;
 import ru.nsu.ccfit.kokunina.dto.exceptions.ReceiveErrorException;
 import ru.nsu.ccfit.kokunina.dto.exceptions.SendErrorException;
 import ru.nsu.ccfit.kokunina.dto.server.responses.UserList;
+import ru.nsu.ccfit.kokunina.dto.server.responses.UserMessage;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -74,6 +76,21 @@ public class JsonServerMessagesController implements ServerMessagesController {
         return loginRequest;
     }
 
+    @Override
+    public void sendUserMessage(UserMessage userMessage) throws SendErrorException {
+        String userMessageString;
+        try {
+            userMessageString = objectMapper.writeValueAsString(userMessage);
+            sendMessage(MessageType.USER_MESSAGE, userMessageString);
+        } catch (IOException e) {
+            throw new SendErrorException(e);
+        }
+    }
+
+    @Override
+    public NewMessage readNewMessage(Message clientMessage) throws IOException {
+            return objectMapper.readValue(clientMessage.getMessageBody(), NewMessage.class);
+    }
 
     public Message readMessage() throws IOException {
         String messageString = input.readUTF();
@@ -81,6 +98,7 @@ public class JsonServerMessagesController implements ServerMessagesController {
         return objectMapper.readValue(messageString, Message.class);
     }
 
+    @Override
     public void sendMessage(MessageType type, String body) throws IOException {
         Message message = new Message(type, body);
         String messageString = objectMapper.writeValueAsString(message);

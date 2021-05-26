@@ -2,13 +2,12 @@ package ru.nsu.ccfit.kokunina;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ru.nsu.ccfit.kokunina.dto.Message;
 import ru.nsu.ccfit.kokunina.dto.User;
 import ru.nsu.ccfit.kokunina.dto.exceptions.NameAlreadyTakenException;
 import ru.nsu.ccfit.kokunina.dto.exceptions.ReceiveErrorException;
-import ru.nsu.ccfit.kokunina.dto.server.responses.UserList;
 
 import java.io.IOException;
-import java.io.OutputStreamWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -39,10 +38,9 @@ public class ChatServer extends Thread {
                     newClient.auth();
                     log.info("Successful authentication: {}", newClient);
                 } catch (IOException | NameAlreadyTakenException | ReceiveErrorException e) {
-                    log.error("Unsuccessful authentication: {}.",this, e);
+                    log.error("Unsuccessful authentication: {}.", this);
                     return;
                 }
-
                 addClient(newClient);
                 newClient.start();
                 //notifyClients();
@@ -78,5 +76,13 @@ public class ChatServer extends Thread {
             users.add(new User(client.getUserName()));
         }
         return users;
+    }
+
+    public void notifyAllExcept(ChatServerClient sourceClient, String message) {
+        for (ChatServerClient client : clients) {
+            if (!sourceClient.equals(client)) {
+                client.receiveMessageFrom(sourceClient, message);
+            }
+        }
     }
 }
