@@ -1,5 +1,7 @@
 # JustChat
 
+[![JustChat.png](https://i.postimg.cc/ncdCSq4Y/JustChat.png)](https://postimg.cc/xczfcJFc)
+
 ## Что это?
 
 Это простой консольный чат на Java, представляющий собой клиент-серверное приложение. Чат общий, каждое новое сообщение отправляется всем

@@ -49,7 +49,7 @@ public class ChatServerClient extends Thread {
                     case USER_LIST -> {
                         log.info("Received user list request from {}", this);
                         messagesController.sendUserList(server.getUserList());
-                        log.info("Send user list request to {}", this);
+                        log.info("Successfully send user list to {}", this);
                     }
                     case NEW_MESSAGE -> {
                         NewMessage newMessage = messagesController.readNewMessage(clientMessage);
@@ -76,6 +76,7 @@ public class ChatServerClient extends Thread {
     private void disconnect() {
         try {
             socket.close();
+            log.info("Connection closed: {}", this);
         } catch (IOException e) {
             log.error("Can not close socket {}", this, e);
         } finally {

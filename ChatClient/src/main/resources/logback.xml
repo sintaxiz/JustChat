@@ -26,6 +26,5 @@
 
     <root level="debug">
         <appender-ref ref="TIME_BASED_FILE"/>
-        <appender-ref ref="STDOUT"/>
     </root>
 </configuration>

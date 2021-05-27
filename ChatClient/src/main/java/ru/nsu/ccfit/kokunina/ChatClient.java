@@ -11,6 +11,8 @@ import ru.nsu.ccfit.kokunina.dto.client.requests.UserListRequest;
 import ru.nsu.ccfit.kokunina.dto.exceptions.ReceiveErrorException;
 import ru.nsu.ccfit.kokunina.dto.exceptions.SendErrorException;
 import ru.nsu.ccfit.kokunina.dto.server.responses.UserList;
+import ru.nsu.ccfit.kokunina.view.ClientView;
+import ru.nsu.ccfit.kokunina.view.ConsoleClientView;
 
 import java.io.*;
 import java.net.Socket;
@@ -21,54 +23,53 @@ public class ChatClient extends Thread {
     private static final Logger log = LoggerFactory.getLogger(ChatClient.class);
 
     private Socket socket;
+    private String username;
 
     private ClientMessagesController messagesController;
+    private final MessageReader messageReader;
+
+    private final String EXIT_COMMAND = "/exit";
+    private final String USER_LIST_COMMAND = "/users";
+
+    ClientView view;
 
     public ChatClient() {
+        messageReader = new ConsoleMessageReader();
+        view = new ConsoleClientView();
     }
 
     @Override
     public void run() {
 
-        BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(System.in));
-
-        MessageReceiver messageReceiver = new MessageReceiver(socket, messagesController, new ConsoleClientView());
-        messageReceiver.start();
+        MessageReceiver messageReceiver = new MessageReceiver(socket, messagesController, view);
+        messageReceiver.start(); // another thread that process messages from server (e.g. new chat messages from other users)
 
         while (!isInterrupted()) {
-            String userMessage;
             try {
-                userMessage = bufferedReader.readLine();
-            } catch (IOException e) {
-                log.error("Can not read message from console");
-                break;
-            }
-            try {
+                String userMessage = messageReader.readMessage();
+                if (EXIT_COMMAND.equals(userMessage)) {
+                    log.info("Exit chat by user request...");
+                    view.exit();
+                    break;
+                }
+                if (USER_LIST_COMMAND.equals(userMessage)) {
+                    log.info("Getting online user list by user request...");
+                    requestUserList();
+                    continue;
+                }
                 messagesController.sendUserMessage(new NewMessage(userMessage));
-                log.info("User message successfully sent");
+                log.info("User message \"{}\" successfully sent", userMessage);
+                view.showNewMessage(userMessage, username);
+            } catch (IOException e) {
+                log.error("Can not read message from console", e);
+                break;
             } catch (SendErrorException e) {
                 log.error("Can not send user message", e);
                 break;
             }
         }
 
-        try {
-            messagesController.sendUserListRequest(new UserListRequest(1));
-            log.info("Request on user list was sent");
-        } catch (SendErrorException e) {
-            log.error("Can not send user list request", e);
-            return;
-        }
-        try {
-            UserList userList = messagesController.receiveUserList();
-            ArrayList<User> users = userList.getUsers();
-            for (User user : users) {
-                log.info("user name = {}", user);
-            }
-        } catch (ReceiveErrorException e) {
-            log.error("can not get user list", e);
-        }
-
+        messageReceiver.interrupt();
         try {
             disconnect();
         } catch (IOException e) {
@@ -90,21 +91,6 @@ public class ChatClient extends Thread {
         }
         socket.close(); // Closing this socket will also close the socket's InputStream and OutputStream.
     }
-   /* public void sendMessage(ArrayList<String> messages) {
-        if (socket == null) {
-            log.error("Can not send message because socket is null. Use connect() to create socket.");
-            return;
-        }
-        try (OutputStream outputStream = socket.getOutputStream();
-             ObjectOutputStream objectOutputStream = new ObjectOutputStream(outputStream)) {
-            for (String msg : messages) {
-                objectOutputStream.writeUTF(msg);
-                log.info("Client sent message \"{}\" to server", msg);
-            }
-        } catch (IOException e) {
-            log.error("Can not send message", e);
-        }
-    }*/
 
     public void logIn(String loginName) throws IOException {
         log.info("Trying log in with name {}...", loginName);
@@ -130,6 +116,16 @@ public class ChatClient extends Thread {
                 log.error("Wrong answer type. Expected ERROR or SUCCESS, but received: {}", answerType);
                 throw new IOException("can not log in");
             }
+        }
+        username = loginName;
+    }
+
+    public void requestUserList() {
+        try {
+            messagesController.sendUserListRequest(new UserListRequest(1));
+            log.info("Request on user list was sent");
+        } catch (SendErrorException e) {
+            log.error("Can not send user list request to server", e);
         }
     }
 

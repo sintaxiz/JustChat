@@ -39,38 +39,6 @@ public class JsonClientMessagesController implements ClientMessagesController {
     }
 
     @Override
-    public UserList receiveUserList() throws ReceiveErrorException {
-        String userListMessageJson;
-        try {
-            userListMessageJson = input.readUTF();
-        } catch (IOException e) {
-            throw new ReceiveErrorException("Can not read utf from input.", e);
-        }
-
-        ObjectMapper objectMapper = new ObjectMapper();
-        Message userMessage;
-        try {
-            userMessage = objectMapper.readValue(userListMessageJson, Message.class);
-        } catch (IOException e) {
-            throw new ReceiveErrorException("Can not convert string message to message object", e);
-        }
-
-        if (userMessage.getType() != MessageType.USER_LIST) {
-            throw new ReceiveErrorException("Wrong message type from client. Requested LOGIN but received " +
-                    userMessage.getType());
-        }
-
-        String userJson = userMessage.getMessageBody();
-        UserList userList;
-        try {
-            userList = objectMapper.readValue(userJson, UserList.class);
-        } catch (IOException e) {
-            throw new ReceiveErrorException("Can not convert message body to UserList object.", e);
-        }
-        return userList;
-    }
-
-    @Override
     public void sendLoginRequest(LoginRequest loginRequest) throws SendErrorException {
         String loginMessageBody;
         try {
@@ -99,6 +67,11 @@ public class JsonClientMessagesController implements ClientMessagesController {
     @Override
     public UserMessage readUserMessage(Message serverMessage) throws IOException {
         return objectMapper.readValue(serverMessage.getMessageBody(), UserMessage.class);
+    }
+
+    @Override
+    public UserList readUserList(Message serverMessage) throws IOException {
+        return objectMapper.readValue(serverMessage.getMessageBody(), UserList.class);
     }
 
     private void sendMessage(Message message) throws SendErrorException {
