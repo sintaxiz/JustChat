@@ -20,4 +20,9 @@ public class ConsoleClientView implements ClientView {
     public void exit() {
         System.out.println("Goodbye, have a good day!");
     }
+
+    @Override
+    public void showNewUserNotification(String newUserName) {
+        System.out.println(newUserName + " joined");
+    }
 }

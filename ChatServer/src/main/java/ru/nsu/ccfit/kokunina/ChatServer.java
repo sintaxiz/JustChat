@@ -2,10 +2,7 @@ package ru.nsu.ccfit.kokunina;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ru.nsu.ccfit.kokunina.dto.Message;
 import ru.nsu.ccfit.kokunina.dto.User;
-import ru.nsu.ccfit.kokunina.dto.exceptions.NameAlreadyTakenException;
-import ru.nsu.ccfit.kokunina.dto.exceptions.ReceiveErrorException;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -34,16 +31,7 @@ public class ChatServer extends Thread {
                 log.info("New connection {} established", newConnection.getRemoteSocketAddress());
 
                 ChatServerClient newClient = new ChatServerClient(newConnection, this);
-                try {
-                    newClient.auth();
-                    log.info("Successful authentication: {}", newClient);
-                } catch (IOException | NameAlreadyTakenException | ReceiveErrorException e) {
-                    log.error("Unsuccessful authentication: {}.", this);
-                    return;
-                }
-                addClient(newClient);
                 newClient.start();
-                //notifyClients();
             } catch (IOException e) {
                 log.error("Exception caught while accepting socket", e);
             }
@@ -82,6 +70,14 @@ public class ChatServer extends Thread {
         for (ChatServerClient client : clients) {
             if (!sourceClient.equals(client)) {
                 client.receiveMessageFrom(sourceClient, message);
+            }
+        }
+    }
+
+    public void notifyAllAboutNewClient(ChatServerClient newClient) {
+        for (ChatServerClient client : clients) {
+            if (!newClient.equals(client)) {
+                client.notifyAboutNewUser(newClient.getUserName());
             }
         }
     }

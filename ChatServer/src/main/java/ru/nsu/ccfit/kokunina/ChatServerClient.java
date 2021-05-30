@@ -40,6 +40,17 @@ public class ChatServerClient extends Thread {
 
     @Override
     public void run() {
+
+        try {
+            auth();
+            log.info("Successful authentication: {}", this);
+        } catch (IOException | NameAlreadyTakenException | ReceiveErrorException e) {
+            log.error("Unsuccessful authentication: {}.", this);
+            return;
+        }
+        server.notifyAllAboutNewClient(this);
+        server.addClient(this);
+
         while (!isInterrupted()) {
             Message clientMessage = null;
             try {
@@ -112,6 +123,14 @@ public class ChatServerClient extends Thread {
             messagesController.sendUserMessage(new UserMessage(client.getUserName(), message));
         } catch (SendErrorException e) {
             log.error("Can not send new user message to client. Maybe try again?", e);
+        }
+    }
+
+    public void notifyAboutNewUser(String userName) {
+        try {
+            messagesController.sendMessage(MessageType.NEW_USER_ADDED, userName);
+        } catch (IOException e) {
+            log.error("Can not send userName to {}", this);
         }
     }
 }

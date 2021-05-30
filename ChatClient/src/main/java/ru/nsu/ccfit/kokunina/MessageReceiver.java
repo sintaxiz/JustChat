@@ -48,6 +48,7 @@ public class MessageReceiver extends Thread {
                         }
                         view.showUserList(usersStringList);
                     }
+                    case NEW_USER_ADDED -> view.showNewUserNotification(serverMessage.getMessageBody());
                     default -> log.warn("MessageReceiver don't have handler for this message type: {}", serverMessage.getType());
                 }
             } catch (IOException e) {

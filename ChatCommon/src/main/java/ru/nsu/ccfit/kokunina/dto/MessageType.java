@@ -6,5 +6,6 @@ public enum MessageType {
     ERROR,
     USER_LIST,
     NEW_MESSAGE,
-    USER_MESSAGE
+    USER_MESSAGE,
+    NEW_USER_ADDED
 }

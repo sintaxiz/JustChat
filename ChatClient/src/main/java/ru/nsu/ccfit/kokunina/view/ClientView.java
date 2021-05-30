@@ -9,4 +9,5 @@ public interface ClientView {
 
     void exit();
 
+    void showNewUserNotification(String messageBody);
 }
