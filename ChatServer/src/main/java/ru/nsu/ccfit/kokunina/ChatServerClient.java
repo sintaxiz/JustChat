@@ -14,7 +14,7 @@ import ru.nsu.ccfit.kokunina.dto.server.responses.UserMessage;
 import java.io.*;
 import java.net.Socket;
 
-public class ChatServerClient extends Thread {
+public class ChatServerClient implements Runnable {
 
 
     private static final Logger log = LoggerFactory.getLogger(ChatServerClient.class);
@@ -51,7 +51,7 @@ public class ChatServerClient extends Thread {
         server.notifyAllAboutNewClient(this);
         server.addClient(this);
 
-        while (!isInterrupted()) {
+        while (true) {
             Message clientMessage = null;
             try {
                 clientMessage = messagesController.readMessage();
@@ -78,7 +78,6 @@ public class ChatServerClient extends Thread {
                 log.error("Can not receive message from client {}. Client will be removed.", this);
                 break;
             }
-
         }
         disconnect();
 

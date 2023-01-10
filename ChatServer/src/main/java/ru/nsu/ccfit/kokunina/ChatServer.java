@@ -10,6 +10,9 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 
 public class ChatServer extends Thread {
 
@@ -30,8 +33,10 @@ public class ChatServer extends Thread {
                 Socket newConnection = serverSocket.accept();
                 log.info("New connection {} established", newConnection.getRemoteSocketAddress());
 
+
+                ExecutorService executor = Executors.newCachedThreadPool();
                 ChatServerClient newClient = new ChatServerClient(newConnection, this);
-                newClient.start();
+                executor.submit(newClient);
             } catch (IOException e) {
                 log.error("Exception caught while accepting socket", e);
             }
@@ -56,7 +61,7 @@ public class ChatServer extends Thread {
     }
 
     public ArrayList<User> getUserList() {
-        if (clients.size() <= 0) {
+        if (clients.isEmpty()) {
             return null;
         }
         ArrayList<User> users = new ArrayList<>();

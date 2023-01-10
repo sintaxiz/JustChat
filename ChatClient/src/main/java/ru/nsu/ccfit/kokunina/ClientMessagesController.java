@@ -14,7 +14,6 @@ import java.io.IOException;
 public interface ClientMessagesController {
     void sendUserListRequest(UserListRequest userListRequest) throws SendErrorException;
 
-
     void sendLoginRequest(LoginRequest loginRequest) throws SendErrorException;
 
     Message readMessage() throws IOException;

@@ -41,7 +41,7 @@ public class ChatClient extends Thread {
     @Override
     public void run() {
 
-        MessageReceiver messageReceiver = new MessageReceiver(socket, messagesController, view);
+        MessageReceiver messageReceiver = new MessageReceiver(messagesController, view);
         messageReceiver.start(); // another thread that process messages from server (e.g. new chat messages from other users)
 
         while (!isInterrupted()) {

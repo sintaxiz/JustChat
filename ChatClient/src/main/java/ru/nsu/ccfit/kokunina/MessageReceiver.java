@@ -17,12 +17,10 @@ public class MessageReceiver extends Thread {
 
     private static final Logger log = LoggerFactory.getLogger(MessageReceiver.class);
 
-    private final Socket socket;
     private final ClientMessagesController messagesController;
     private final ClientView view;
 
-    public MessageReceiver(Socket socket, ClientMessagesController messagesController, ClientView view) {
-        this.socket = socket;
+    public MessageReceiver(ClientMessagesController messagesController, ClientView view) {
         this.messagesController = messagesController;
         this.view = view;
     }
@@ -33,7 +31,6 @@ public class MessageReceiver extends Thread {
         while (!isInterrupted()) {
             try {
                 Message serverMessage = messagesController.readMessage();
-                //log.info("get server message: {}", serverMessage.getMessageBody());
                 switch (serverMessage.getType()) {
                     case USER_MESSAGE -> {
                         UserMessage userMessage = messagesController.readUserMessage(serverMessage);

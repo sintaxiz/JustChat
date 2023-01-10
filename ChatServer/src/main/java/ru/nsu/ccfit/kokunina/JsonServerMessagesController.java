@@ -38,6 +38,7 @@ public class JsonServerMessagesController implements ServerMessagesController {
         } catch (IOException e) {
             throw new SendErrorException("Can not write user list to output", e);
         }
+
     }
 
     @Override
